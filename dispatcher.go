@@ -3,13 +3,22 @@ package goworker
 import (
 	"sync"
 	"time"
+
+	"go.uber.org/zap/zapcore"
 )
+
+// Logger ...
+type Logger interface {
+	Info(string, ...zapcore.Field)
+}
 
 // Dispatcher starts workers and route jobs for it
 type Dispatcher struct {
 	// A pool of workers channels that are registered with the goworker
+	Verbose         bool
 	WorkerPool      chan chan Job
 	Workers         chan *Worker
+	Logger          Logger
 	maxWorkers      int
 	jobsQueue       chan Job
 	unperformedJobs []Job
@@ -45,8 +54,11 @@ func (d *Dispatcher) Run() {
 	// starting n number of workers
 	for i := 0; i < d.maxWorkers; i++ {
 		w := NewWorker(i, d.WorkerPool)
+		d.Log("starting dispatcher")
 		w.Start(d.wg)
+		d.Log("waiting on worker")
 		d.Workers <- w
+		d.Log("worker dispatched")
 	}
 
 	d.dispatch()
@@ -81,9 +93,12 @@ func (d *Dispatcher) dispatch() {
 			// this will block until a worker is idle
 			case jobChannel := <-d.WorkerPool:
 				// dispatch the job to the worker job channel
+				d.Log("dispatching job to worker channel")
 				jobChannel <- job
+				d.Log("dispatched job")
 			case <-d.stop:
 				// if need to exit save current job to unperformedJobs
+				d.Log("append unperfomred jobs")
 				d.unperformedJobs = append(d.unperformedJobs, job)
 				return
 			}
@@ -149,4 +164,11 @@ func (d *Dispatcher) CleanUnperformedJobs() {
 // CountJobs counts the number of jobs in the queue
 func (d *Dispatcher) CountJobs() int {
 	return len(d.jobsQueue)
+}
+
+// Log ...
+func (d *Dispatcher) Log(msg string, fields ...zapcore.Field) {
+	if d.Verbose {
+		d.Logger.Info(msg, fields...)
+	}
 }
