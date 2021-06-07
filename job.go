@@ -1,6 +1,6 @@
 package goworker
 
-// Job is interface for jobs
-type Job interface {
+// JobPerformer is interface for jobs
+type JobPerformer interface {
 	Perform()
 }

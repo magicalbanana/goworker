@@ -16,12 +16,12 @@ type Logger interface {
 type Dispatcher struct {
 	// A pool of workers channels that are registered with the goworker
 	Verbose         bool
-	WorkerPool      chan chan Job
+	WorkerPool      chan chan JobPerformer
 	Workers         chan *Worker
 	Logger          Logger
 	maxWorkers      int
-	jobsQueue       chan Job
-	unperformedJobs []Job
+	jobsQueue       chan JobPerformer
+	unperformedJobs []JobPerformer
 	stop            chan bool
 	stopped         chan bool
 	wg              *sync.WaitGroup
@@ -30,9 +30,9 @@ type Dispatcher struct {
 
 // NewDispatcher construct new Dispatcher
 func NewDispatcher(maxWorkers int, jobsQueueSize uint) *Dispatcher {
-	jobsQueue := make(chan Job, jobsQueueSize)
-	var unperformedJobs []Job // when stop copy all jobs from jobsQueue to unperformedJobs
-	pool := make(chan chan Job, maxWorkers)
+	jobsQueue := make(chan JobPerformer, jobsQueueSize)
+	var unperformedJobs []JobPerformer // when stop copy all jobs from jobsQueue to unperformedJobs
+	pool := make(chan chan JobPerformer, maxWorkers)
 	workers := make(chan *Worker, maxWorkers)
 	return &Dispatcher{
 		WorkerPool:      pool,
@@ -66,6 +66,7 @@ func (d *Dispatcher) Run() {
 
 func (d *Dispatcher) dispatch() {
 	defer func() {
+		d.Log("stopping worker")
 		d.stopWorkers()
 
 		d.wg.Wait()
@@ -111,7 +112,7 @@ func (d *Dispatcher) dispatch() {
 func (d *Dispatcher) stopWorkers() {
 	defer func() {
 		// clear WorkerPool
-		for _ = range d.WorkerPool {
+		for range d.WorkerPool {
 			if len(d.WorkerPool) == 0 {
 				return
 			}
@@ -127,7 +128,7 @@ func (d *Dispatcher) stopWorkers() {
 }
 
 // AddJob adds new job to dispatcher
-func (d *Dispatcher) AddJob(job Job) {
+func (d *Dispatcher) AddJob(job JobPerformer) {
 	// add job to dispatcher, it's check is dispatcher Stop() in progress and
 	// try again
 
@@ -152,13 +153,13 @@ func (d *Dispatcher) Stop() {
 }
 
 // GetUnperformedJobs method returns a chan of Jobs that have not been done before Stop() executed
-func (d *Dispatcher) GetUnperformedJobs() []Job {
+func (d *Dispatcher) GetUnperformedJobs() []JobPerformer {
 	return d.unperformedJobs
 }
 
 // CleanUnperformedJobs remove unperformedJobs
 func (d *Dispatcher) CleanUnperformedJobs() {
-	d.unperformedJobs = make([]Job, 0)
+	d.unperformedJobs = make([]JobPerformer, 0)
 }
 
 // CountJobs counts the number of jobs in the queue

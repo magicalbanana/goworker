@@ -6,17 +6,17 @@ import (
 
 // Worker represents the worker that executes the job
 type Worker struct {
-	WorkerPool chan chan Job
-	JobChannel chan Job
+	WorkerPool chan chan JobPerformer
+	JobChannel chan JobPerformer
 	quit       chan bool
 	num        int
 }
 
 // NewWorker constructs new Worker
-func NewWorker(num int, workerPool chan chan Job) *Worker {
+func NewWorker(num int, workerPool chan chan JobPerformer) *Worker {
 	return &Worker{
 		WorkerPool: workerPool,
-		JobChannel: make(chan Job),
+		JobChannel: make(chan JobPerformer),
 		quit:       make(chan bool),
 		num:        num,
 	}

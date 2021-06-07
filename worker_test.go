@@ -17,7 +17,7 @@ type TestJob struct {
 }
 
 // check interface implementation
-var _ Job = (*TestJob)(nil)
+var _ JobPerformer = (*TestJob)(nil)
 
 func (j *TestJob) Perform() {
 	j.SomeJobResult = j.SomeJobData
